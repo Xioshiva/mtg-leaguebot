@@ -1,0 +1,21 @@
+{
+  "name": "mtgleaguebot",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "chalk": "^5.4.1",
+    "discord.js": "^14.21.0",
+    "dotenv": "^17.0.0",
+    "mongodb": "^6.17.0",
+    "node-fetch": "^3.3.2",
+    "sqlite3": "^5.1.7",
+    "winston": "^3.17.0"
+  },
+  "description": ""
+}

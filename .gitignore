@@ -1,0 +1,30 @@
+﻿# Dependency directories
+node_modules/
+
+# Logs
+logs/
+*.log
+
+# Environment configuration
+.env
+
+# Database
+*.db
+
+# IDE settings
+.vscode/
+.idea/
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# npm
+npm-debug.log*
+package-lock.json
+
+# Miscellaneous
+.DS_Store
+Thumbs.db
