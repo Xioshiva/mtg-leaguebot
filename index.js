@@ -1,11 +1,17 @@
-require('dotenv').config();
-const { Client, GatewayIntentBits, EmbedBuilder, REST, Routes, SlashCommandBuilder } = require('discord.js');
-const db = require('./db');
-const fs = require('fs').promises;
-const path = require('path');
-const eventParser = require('./eventLinkParser');
-const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
-const logger = require('./logger');
+import 'dotenv/config';
+
+import { Client, GatewayIntentBits, EmbedBuilder, REST, Routes, SlashCommandBuilder } from 'discord.js';
+import * as db from './db.js';
+import { promises as fs } from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import * as eventParser from './eventLinkParser.js';
+import fetch from 'node-fetch';
+import logger from './logger.js';
+
+// Define __dirname equivalent in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds] // Only need Guilds intent for slash commands
@@ -116,7 +122,20 @@ const commands = [
     .addStringOption(option => 
       option.setName('date')
         .setDescription('Date (YYYY-MM-DD) or month (YYYY-MM)')
-        .setRequired(false))
+        .setRequired(false)),
+  
+  // Command to delete an event by ID
+  new SlashCommandBuilder()
+    .setName('deleteevent')
+    .setDescription('Delete an event and all its scores by event ID')
+    .addStringOption(option => 
+      option.setName('eventid')
+        .setDescription('The tournament event ID to delete')
+        .setRequired(true))
+    .addBooleanOption(option =>
+      option.setName('confirm')
+        .setDescription('Confirm deletion (set to true to confirm)')
+        .setRequired(true)),
 ];
 
 // Add this helper function at the top of your file before the command handlers
@@ -533,6 +552,106 @@ client.on('interactionCreate', async interaction => {
       
       interaction.editReply({ embeds: [embed] });
     });
+  }
+
+  // Command to delete an event by ID
+  if (commandName === 'deleteevent') {
+    const eventId = interaction.options.getString('eventid');
+    const confirm = interaction.options.getBoolean('confirm');
+    
+    // Admin check
+    if (!hasAdminRole(interaction)) {
+      logger.warn(`Permission denied for user ${interaction.user.tag}: missing bot-admin role`);
+      return interaction.reply({ 
+        content: 'You need the **bot-admin** role to delete events.', 
+        ephemeral: true 
+      });
+    }
+    
+    if (confirm) {
+      db.deleteEvent(eventId, (result) => {
+        if (result.acknowledged) {
+          return interaction.reply(`Event with ID \`${eventId}\` has been deleted.`);
+        } else {
+          return interaction.reply(`Failed to delete event with ID \`${eventId}\`.`);
+        }
+      });
+    } else {
+      return interaction.reply('Deletion not confirmed. Use the confirm option to delete the event.');
+    }
+  }
+
+  // Command to delete an event
+  if (commandName === 'deleteevent') {
+    // Admin check - only admins can delete events
+    if (!hasAdminRole(interaction)) {
+      logger.warn(`Permission denied for user ${interaction.user.tag}: missing bot-admin role`);
+      return interaction.reply({ 
+        content: 'You need the **bot-admin** role to delete tournament results.', 
+        ephemeral: true 
+      });
+    }
+    
+    const eventId = interaction.options.getString('eventid');
+    const confirmDelete = interaction.options.getBoolean('confirm');
+    
+    if (!confirmDelete) {
+      return interaction.reply({
+        content: 'Deletion cancelled. Set the confirm option to true if you want to delete this event.',
+        ephemeral: true
+      });
+    }
+    
+    // Acknowledge the request
+    await interaction.deferReply();
+    
+    try {
+      // First, get the event info to show what's being deleted
+      db.getEventScores(eventId, async (rows) => {
+        if (!rows.length) {
+          return interaction.editReply(`No event found with ID ${eventId}.`);
+        }
+        
+        // Get event info from the first row
+        const eventName = rows[0].eventName || 'Unknown Tournament';
+        const eventDate = rows[0].month || 'Unknown Date';
+        const format = rows[0].format || 'Unknown Format';
+        const playerCount = rows.length;
+        
+        // Delete the event
+        db.deleteEventById(eventId, (success, error) => {
+          if (error) {
+            logger.error(`Error deleting event ${eventId}:`, error);
+            return interaction.editReply(`Error deleting event: ${error.message || 'Unknown error'}`);
+          }
+          
+          if (success) {
+            logger.info(`Successfully deleted event ${eventId} (${eventName}) with ${playerCount} players`);
+            
+            // Create an embed with the summary of what was deleted
+            const embed = new EmbedBuilder()
+              .setTitle(`🗑️ Tournament Deleted`)
+              .setColor(0xFF0000)
+              .setDescription(
+                `**Event**: ${eventName}\n` +
+                `**Date**: ${eventDate}\n` +
+                `**Format**: ${format}\n` +
+                `**Event ID**: ${eventId}\n` +
+                `**Players**: ${playerCount}\n\n` +
+                `All scores associated with this tournament have been deleted.`
+              )
+              .setFooter({ text: `Deleted by ${interaction.user.tag}` });
+              
+            return interaction.editReply({ embeds: [embed] });
+          } else {
+            return interaction.editReply(`No event found with ID ${eventId} or no scores were deleted.`);
+          }
+        });
+      });
+    } catch (error) {
+      logger.error('Error in delete event command:', error);
+      return interaction.editReply('There was an error processing your request.');
+    }
   }
 });
 

@@ -46,6 +46,17 @@ Exports scores as a CSV file for a specific format during a league year.
 - **Permission**: Requires bot-admin role
 - **Example**: `/exportscores Modern 2025` - Exports all Modern format scores from June 2025 to June 2026 as a CSV file
 
+### `/deleteevent`
+Deletes a tournament and all associated player scores by event ID.
+
+- **Usage**: `/deleteevent [eventid] [confirm]`
+- **Parameters**:
+  - `eventid` (required): The tournament's unique identifier to delete
+  - `confirm` (required): Must be set to `true` to confirm deletion
+- **Permission**: Requires bot-admin role
+- **Example**: `/deleteevent 8993570 confirm:true` - Deletes tournament ID 8993570 and all its scores
+- **Warning**: This action cannot be undone
+
 ## View-Only Commands (Available to all users)
 
 ### `/tournament`
@@ -128,3 +139,4 @@ League years run from June to June of the following year. For example, the 2025 
 - `/exportscores Modern 2025` - Export all Modern scores for the 2025-2026 season (requires bot-admin)
 - `/parseeventlink [paste EventLink report]` - Add tournament results from an EventLink report (requires bot-admin)
 - `/uploadstandings [file]` - Upload and process an EventLink standings file (requires bot-admin)
+- `/deleteevent 8993570 confirm:true` - Delete tournament ID 8993570 and all its scores (requires bot-admin)

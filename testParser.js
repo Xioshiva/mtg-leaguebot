@@ -7,18 +7,17 @@
  * Run with: node testParser.js
  */
 
-const { parseEventLinkReport } = require('./eventLinkParser');
-const logger = require('./logger');
+import { parseEventLinkReport } from './eventLinkParser.js';
+import logger from './logger.js';
+import chalk from 'chalk';
+import process from 'process';
 
-// Utility functions for testing
-const chalk = require('chalk'); // You may need to install this: npm install chalk
-
-// If chalk is not installed, create a simple fallback
+// Utility functions for testing with chalk
 const log = {
-  success: (msg) => logger.info(`✅ ${msg}`),
-  error: (msg) => logger.error(`❌ ${msg}`),
-  info: (msg) => logger.info(`ℹ️ ${msg}`),
-  warn: (msg) => logger.warn(`⚠️ ${msg}`)
+  success: (msg) => logger.info(chalk.green(`✅ ${msg}`)),
+  error: (msg) => logger.error(chalk.red(`❌ ${msg}`)),
+  info: (msg) => logger.info(chalk.blue(`ℹ️ ${msg}`)),
+  warn: (msg) => logger.warn(chalk.yellow(`⚠️ ${msg}`))
 };
 
 // Test runner

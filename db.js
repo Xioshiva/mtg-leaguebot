@@ -1,7 +1,9 @@
 // db.js - MongoDB version
-const { MongoClient } = require('mongodb');
-require('dotenv').config();
-const logger = require('./logger');
+import { MongoClient } from 'mongodb';
+import dotenv from 'dotenv';
+import logger from './logger.js';
+
+dotenv.config();
 
 // Get your MongoDB Atlas connection string from .env file
 const uri = process.env.MONGODB_URI;
@@ -50,7 +52,7 @@ let database;
  * @param {string} eventId - Event ID
  * @param {string} eventName - Event name
  */
-async function addScore(userId, username, month, points, format = null, eventId = null, eventName = null) {
+export async function addScore(userId, username, month, points, format = null, eventId = null, eventName = null) {
   try {
     await database.collection(scoresCollection).updateOne(
       { user_id: userId, month: month, format: format, eventId: eventId },
@@ -77,7 +79,7 @@ async function addScore(userId, username, month, points, format = null, eventId 
  * @param {string} month - Month in YYYY-MM format
  * @param {function} callback - Callback function for results
  */
-function getScores(month, callback) {
+export function getScores(month, callback) {
   database.collection(scoresCollection)
     .find({ month: month })
     .sort({ score: -1 })
@@ -97,7 +99,7 @@ function getScores(month, callback) {
  * @param {string} eventId - Event ID
  * @param {function} callback - Callback function for results
  */
-function getEventScores(eventId, callback) {
+export function getEventScores(eventId, callback) {
   database.collection(scoresCollection)
     .find({ eventId: eventId })
     .sort({ score: -1 })
@@ -119,7 +121,7 @@ function getEventScores(eventId, callback) {
  * @param {number} limit - Maximum number of players to return
  * @param {function} callback - Callback function for results
  */
-function getFormatLeaders(format, startMonth, endMonth, limit, callback) {
+export function getFormatLeaders(format, startMonth, endMonth, limit, callback) {
   // Convert months to dates for comparison
   const startDate = new Date(startMonth + '-01');
   const endDate = new Date(endMonth + '-31');
@@ -166,7 +168,7 @@ function getFormatLeaders(format, startMonth, endMonth, limit, callback) {
  * @param {string} endMonth - End month in YYYY-MM format (typically next June)
  * @param {function} callback - Callback function for results
  */
-function getAllFormatScores(format, startMonth, endMonth, callback) {
+export function getAllFormatScores(format, startMonth, endMonth, callback) {
   database.collection(scoresCollection)
     .find({ 
       format: format,
@@ -193,7 +195,7 @@ function getAllFormatScores(format, startMonth, endMonth, callback) {
  * @param {string} query.date - Date to search for (YYYY-MM-DD or YYYY-MM)
  * @param {function} callback - Callback function for results
  */
-function findEvents(query, callback) {
+export function findEvents(query, callback) {
   const filter = {};
   
   if (query.format) {
@@ -234,6 +236,46 @@ function findEvents(query, callback) {
     });
 }
 
+/**
+ * Delete an event and all associated scores by event ID
+ * @param {string} eventId - The ID of the event to delete
+ * @param {Function} callback - Callback function(success, error)
+ */
+export function deleteEventById(eventId, callback) {
+  try {
+    // For MongoDB implementation
+    const { MongoClient } = require('mongodb');
+    const uri = process.env.MONGODB_URI;
+    const client = new MongoClient(uri);
+    
+    client.connect(async (err) => {
+      if (err) {
+        console.error("MongoDB connection error:", err);
+        return callback(false, err);
+      }
+      
+      const db = client.db('mtgleague');
+      const scoresCollection = db.collection('scores');
+      
+      // Delete all scores with the given eventId
+      const result = await scoresCollection.deleteMany({ eventId: eventId });
+      
+      client.close();
+      
+      // Return true if at least one document was deleted
+      if (result.deletedCount > 0) {
+        return callback(true);
+      } else {
+        return callback(false);
+      }
+    });
+    
+    
+  } catch (error) {
+    return callback(false, error);
+  }
+}
+
 // Graceful shutdown - close MongoDB connection when the app terminates
 process.on('SIGINT', () => {
   client.close().then(() => {
@@ -241,12 +283,3 @@ process.on('SIGINT', () => {
     process.exit(0);
   });
 });
-
-module.exports = {
-  addScore,
-  getScores,
-  getEventScores,
-  getFormatLeaders,
-  getAllFormatScores,
-  findEvents
-};

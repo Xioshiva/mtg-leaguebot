@@ -2,10 +2,11 @@
  * Parser for EventLink standings reports
  * Extracts tournament information and player results
  */
-const logger = require('./logger');
+import logger from './logger.js';
+import { promises as fs } from 'fs';
 
 // Parse the event link report text
-function parseEventLinkReport(text) {
+export function parseEventLinkReport(text) {
   logger.info('parseEventLinkReport called');
   
   if (!text) {
@@ -194,9 +195,8 @@ function parseEventLinkReport(text) {
 }
 
 // Helper function to read from file
-async function parseEventLinkFile(filePath) {
+export async function parseEventLinkFile(filePath) {
   try {
-    const fs = require('fs').promises;
     const content = await fs.readFile(filePath, 'utf8');
     return parseEventLinkReport(content);
   } catch (error) {
@@ -204,8 +204,3 @@ async function parseEventLinkFile(filePath) {
     throw error;
   }
 }
-
-module.exports = {
-  parseEventLinkReport,
-  parseEventLinkFile
-};
