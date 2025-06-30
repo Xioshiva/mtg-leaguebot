@@ -6,14 +6,7 @@ This document lists all available commands for the MTG League Bot. Use these com
 
 All commands start with a slash (`/`) in Discord.
 
-## Permission Levels
-
-The commands are divided into two permission levels:
-
-- **View-Only Commands**: Available to all users
-- **Administrative Commands**: Requires the **bot-admin** role
-
-## Administrative Commands (Requires bot-admin role)
+## Administrative Commands
 
 ### `/parseeventlink`
 Adds tournament results to the database from a pasted EventLink standings report.
@@ -21,7 +14,6 @@ Adds tournament results to the database from a pasted EventLink standings report
 - **Usage**: `/parseeventlink [report]`
 - **Parameters**:
   - `report` (required): Paste the entire EventLink standings report text
-- **Permission**: Requires bot-admin role
 - **Example**: `/parseeventlink EventLink 6/12/2025, 1:52 PM
 Report: Standings by Rank
 Event: Draft Final Fantasy (8993570)
@@ -33,7 +25,6 @@ Adds tournament results to the database from an uploaded EventLink standings tex
 - **Usage**: `/uploadstandings [file]`
 - **Parameters**:
   - `file` (required): A .txt file containing the EventLink standings report
-- **Permission**: Requires bot-admin role
 - **Example**: `/uploadstandings [attach a tournament-results.txt file]`
 
 ### `/exportscores`
@@ -42,9 +33,8 @@ Exports scores as a CSV file for a specific format during a league year.
 - **Usage**: `/exportscores [format] [year]`
 - **Parameters**:
   - `format` (required): The Magic format to export scores for
-  - `year` (required): Start year in YYYY format (exports June YYYY to June YYYY+1)
-- **Permission**: Requires bot-admin role
-- **Example**: `/exportscores Modern 2025` - Exports all Modern format scores from June 2025 to June 2026 as a CSV file
+  - `year` (required): The year in YYYY format (exports June YYYY-1 to May YYYY)
+- **Example**: `/exportscores Modern 2025` - Exports all Modern format scores from June 2024 to May 2025 as a CSV file
 
 ### `/deleteevent`
 Deletes a tournament and all associated player scores by event ID.
@@ -53,11 +43,10 @@ Deletes a tournament and all associated player scores by event ID.
 - **Parameters**:
   - `eventid` (required): The tournament's unique identifier to delete
   - `confirm` (required): Must be set to `true` to confirm deletion
-- **Permission**: Requires bot-admin role
 - **Example**: `/deleteevent 8993570 confirm:true` - Deletes tournament ID 8993570 and all its scores
 - **Warning**: This action cannot be undone
 
-## View-Only Commands (Available to all users)
+## View-Only Commands
 
 ### `/tournament`
 Displays the results for a specific tournament by event ID.
@@ -80,32 +69,15 @@ Searches for tournaments by format and/or date.
   - `/findevents date:2025-06-15` - Find all tournaments held on June 15, 2025
   - `/findevents format:Modern date:2025-06` - Find Modern tournaments in June 2025
 
-### `/scoreboard`
-Displays the monthly scoreboard of all formats combined.
-
-- **Usage**: `/scoreboard [month]`
-- **Parameters**:
-  - `month` (optional): Month in YYYY-MM format (defaults to current month)
-- **Examples**:
-  - `/scoreboard` - Show the current month's scoreboard
-  - `/scoreboard 2025-06` - Show the scoreboard for June 2025
-
 ### `/formatleaders`
-Displays the top 10 players for a specific format during a league year (June to June).
+Displays the top 10 players for a specific format during a league year (June to May).
 
 - **Usage**: `/formatleaders [format] [year]`
 - **Parameters**:
   - `format` (required): The Magic format to show rankings for
-  - `year` (required): Start year in YYYY format (shows June YYYY to June YYYY+1)
-- **Example**: `/formatleaders Limited 2025` - Shows top 10 Limited players from June 2025 to June 2026
-
-## Setting Up the bot-admin Role
-
-1. Go to your Discord server settings
-2. Navigate to the "Roles" section
-3. Create a new role named exactly "bot-admin"
-4. Assign this role to users who should have administrative access to the bot
-5. The bot will automatically check for this role when administrative commands are used
+  - `year` (required): The year in YYYY format (shows June YYYY-1 to May YYYY)
+- **Example**: `/formatleaders Limited 2025` - Shows top 10 Limited players from June 2024 to May 2025
+- **Note**: Now includes the number of events each player has participated in
 
 ## Supported Formats
 
@@ -128,15 +100,14 @@ The bot automatically detects formats from tournament names when parsing EventLi
 
 ## League Years
 
-League years run from June to June of the following year. For example, the 2025 league year runs from June 2025 to June 2026.
+League years run from June of one year to May of the following year. For example, the 2025 league year runs from June 2024 to May 2025.
 
 ## Quick Reference Examples
 
-- `/scoreboard 2025-06` - Show scores for June 2025
-- `/formatleaders Limited 2025` - Show top Limited players for the 2025-2026 season
+- `/formatleaders Limited 2025` - Show top Limited players from June 2024 to May 2025
 - `/findevents format:Limited date:2025-06-15` - Find Limited events on June 15, 2025
 - `/tournament 8993570` - Show results for tournament ID 8993570
-- `/exportscores Modern 2025` - Export all Modern scores for the 2025-2026 season (requires bot-admin)
-- `/parseeventlink [paste EventLink report]` - Add tournament results from an EventLink report (requires bot-admin)
-- `/uploadstandings [file]` - Upload and process an EventLink standings file (requires bot-admin)
-- `/deleteevent 8993570 confirm:true` - Delete tournament ID 8993570 and all its scores (requires bot-admin)
+- `/exportscores Modern 2025` - Export all Modern scores from June 2024 to May 2025
+- `/parseeventlink [paste EventLink report]` - Add tournament results from an EventLink report
+- `/uploadstandings [file]` - Upload and process an EventLink standings file
+- `/deleteevent 8993570 confirm:true` - Delete tournament ID 8993570 and all its scores

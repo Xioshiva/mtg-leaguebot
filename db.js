@@ -142,14 +142,22 @@ export function getFormatLeaders(format, startMonth, endMonth, limit, callback) 
       
       docs.forEach(doc => {
         if (!playerScores[doc.username]) {
-          playerScores[doc.username] = 0;
+          playerScores[doc.username] = {
+            score: 0,
+            eventCount: 0
+          };
         }
-        playerScores[doc.username] += doc.score;
+        playerScores[doc.username].score += doc.score;
+        playerScores[doc.username].eventCount += 1; // Count each entry as an event
       });
       
       // Convert to array and sort
       const sortedPlayers = Object.entries(playerScores)
-        .map(([username, score]) => ({ username, score }))
+        .map(([username, data]) => ({ 
+          username, 
+          score: data.score,
+          eventCount: data.eventCount 
+        }))
         .sort((a, b) => b.score - a.score)
         .slice(0, limit);
       
@@ -243,37 +251,55 @@ export function findEvents(query, callback) {
  */
 export function deleteEventById(eventId, callback) {
   try {
-    // For MongoDB implementation
-    const { MongoClient } = require('mongodb');
-    const uri = process.env.MONGODB_URI;
-    const client = new MongoClient(uri);
-    
-    client.connect(async (err) => {
-      if (err) {
-        console.error("MongoDB connection error:", err);
-        return callback(false, err);
-      }
-      
-      const db = client.db('mtgleague');
-      const scoresCollection = db.collection('scores');
-      
-      // Delete all scores with the given eventId
-      const result = await scoresCollection.deleteMany({ eventId: eventId });
-      
-      client.close();
-      
-      // Return true if at least one document was deleted
-      if (result.deletedCount > 0) {
-        return callback(true);
-      } else {
-        return callback(false);
-      }
-    });
-    
-    
+    // Use the existing database connection
+    database.collection(scoresCollection)
+      .deleteMany({ eventId: eventId })
+      .then(result => {
+        // Return true if at least one document was deleted
+        if (result.deletedCount > 0) {
+          logger.info(`Deleted ${result.deletedCount} scores for event ID ${eventId}`);
+          return callback(true);
+        } else {
+          logger.warn(`No scores found for event ID ${eventId}`);
+          return callback(false);
+        }
+      })
+      .catch(error => {
+        logger.error('Error deleting event:', error);
+        return callback(false, error);
+      });
   } catch (error) {
+    logger.error('Exception in deleteEventById:', error);
     return callback(false, error);
   }
+}
+
+/**
+ * Get scores for a specific date range and optional format
+ * @param {string} startMonth - Start month in YYYY-MM format
+ * @param {string} endMonth - End month in YYYY-MM format
+ * @param {string|null} format - Optional format to filter by
+ * @param {function} callback - Callback function for results
+ */
+export function getAllScores(startMonth, endMonth, format, callback) {
+  const collection = database.collection(scoresCollection);
+  const query = {
+    month: { $gte: startMonth, $lte: endMonth }
+  };
+  
+  // Add format to query if specified
+  if (format) {
+    query.format = format;
+  }
+  
+  collection.find(query).toArray()
+    .then(results => {
+      callback(results);
+    })
+    .catch(err => {
+      logger.error('Error getting scores:', err);
+      callback([]);
+    });
 }
 
 // Graceful shutdown - close MongoDB connection when the app terminates

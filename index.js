@@ -23,14 +23,6 @@ const PREFIX = '!';
 const commands = [
   
   new SlashCommandBuilder()
-    .setName('scoreboard')
-    .setDescription('View the monthly scoreboard')
-    .addStringOption(option => 
-      option.setName('month')
-        .setDescription('Month in YYYY-MM format (defaults to current month)')
-        .setRequired(false)),
-        
-  new SlashCommandBuilder()
     .setName('parseeventlink')
     .setDescription('Parse EventLink standings report')
     .addStringOption(option => 
@@ -75,10 +67,10 @@ const commands = [
         ))
     .addStringOption(option => 
       option.setName('year')
-        .setDescription('Year to check (YYYY format, will show June YYYY to June YYYY+1)')
+        .setDescription('Year to check (YYYY format, will show June YYYY to May YYYY+1)')
         .setRequired(true)),
   
-  // Command to export scores as CSV for a format over a league year
+  // Command to export scores as CSV
   new SlashCommandBuilder()
     .setName('exportscores')
     .setDescription('Export scores as CSV file for a format over a league year')
@@ -98,7 +90,7 @@ const commands = [
         ))
     .addStringOption(option => 
       option.setName('year')
-        .setDescription('Year to export (YYYY format, will export June YYYY to June YYYY+1)')
+        .setDescription('Year to export (YYYY format, will export June YYYY-1 to May YYYY)')
         .setRequired(true)),
   
   // Command to find events by date and/or format
@@ -138,23 +130,6 @@ const commands = [
         .setRequired(true)),
 ];
 
-// Add this helper function at the top of your file before the command handlers
-
-/**
- * Check if a user has the bot-admin role
- * @param {Interaction} interaction - The Discord interaction
- * @returns {boolean} - Whether the user has the bot-admin role
- */
-function hasAdminRole(interaction) {
-  // If it's a DM, there are no roles
-  if (!interaction.guild) {
-    return false;
-  }
-  
-  const member = interaction.member;
-  return member.roles.cache.some(role => role.name === 'bot-admin');
-}
-
 // Register slash commands when the bot starts
 client.once('ready', async () => {
   logger.info(`✅ Logged in as ${client.user.tag}`);
@@ -183,13 +158,6 @@ client.on('interactionCreate', async interaction => {
 
   // Command handler for /addscore (if you still have it)
   if (commandName === 'addscore') {
-    // Admin check
-    if (!hasAdminRole(interaction)) {
-      return interaction.reply({ 
-        content: 'You need the **bot-admin** role to add scores manually.', 
-        ephemeral: true 
-      });
-    }
 
     const points = interaction.options.getInteger('points');
     const month = new Date().toISOString().slice(0, 7);
@@ -199,20 +167,9 @@ client.on('interactionCreate', async interaction => {
   }
 
   // Update the parseeventlink command with detailed logging
-
   if (commandName === 'parseeventlink') {
     logger.info(`Command triggered: parseeventlink by user ${interaction.user.tag}`);
-    
-    // Admin check
-    if (!hasAdminRole(interaction)) {
-      logger.warn(`Permission denied for user ${interaction.user.tag}: missing bot-admin role`);
-      return interaction.reply({ 
-        content: 'You need the **bot-admin** role to add tournament results.', 
-        ephemeral: true 
-      });
-    }
-    
-    logger.info(`Permission check passed for user ${interaction.user.tag}`);
+  
     const reportText = interaction.options.getString('report');
     logger.info('Report text length:', reportText ? reportText.length : 0);
     logger.debug('First 100 characters of report:', reportText ? reportText.substring(0, 100) : 'empty');
@@ -275,6 +232,7 @@ client.on('interactionCreate', async interaction => {
         .setColor(0x00AE86)
         .setDescription(
           `**Event**: ${result.eventInfo.eventName}\n` +
+          `**Event ID**: \`${result.eventInfo.eventId || 'Unknown'}\`\n` +
           `**Date**: ${result.eventInfo.eventDate}\n` +
           `**Format**: ${result.eventInfo.format || 'Unknown'}\n` +
           `**Players**: ${result.players.length}\n\n` +
@@ -294,14 +252,6 @@ client.on('interactionCreate', async interaction => {
   // Add the admin check to /uploadstandings command
 
   if (commandName === 'uploadstandings') {
-    // Admin check
-    if (!hasAdminRole(interaction)) {
-      logger.warn(`Permission denied for user ${interaction.user.tag}: missing bot-admin role`);
-      return interaction.reply({ 
-        content: 'You need the **bot-admin** role to add tournament results.', 
-        ephemeral: true 
-      });
-    }
     
     const file = interaction.options.getAttachment('file');
     logger.info(`User ${interaction.user.tag} uploaded file: ${file.name}`);
@@ -353,6 +303,7 @@ client.on('interactionCreate', async interaction => {
         .setColor(0x00AE86)
         .setDescription(
           `**Event**: ${result.eventInfo.eventName}\n` +
+          `**Event ID**: \`${result.eventInfo.eventId || 'Unknown'}\`\n` +
           `**Date**: ${result.eventInfo.eventDate}\n` +
           `**Format**: ${result.eventInfo.format || 'Unknown'}\n` +
           `**Players**: ${result.players.length}\n\n` +
@@ -399,7 +350,7 @@ client.on('interactionCreate', async interaction => {
     });
   }
 
-  // Command to show format leaders
+    // Command to show format leaders
   if (commandName === 'formatleaders') {
     const format = interaction.options.getString('format');
     const yearStr = interaction.options.getString('year');
@@ -410,27 +361,27 @@ client.on('interactionCreate', async interaction => {
       return interaction.reply('Please provide a valid year in YYYY format.');
     }
     
-    // Calculate start and end months for the league year (June to June)
-    const startMonth = `${year}-06`; // June of the selected year
-    const endMonth = `${year + 1}-06`; // June of the next year
+    // Calculate start and end months for the league year (June of previous year to May of current year)
+    const startMonth = `${year-1}-06`; // June of the previous year
+    const endMonth = `${year}-05`;     // May of the current year
     
     // Acknowledge the request
     await interaction.deferReply();
     
     db.getFormatLeaders(format, startMonth, endMonth, 10, (players) => {
       if (!players.length) {
-        return interaction.editReply(`No scores found for ${format} from June ${year} to June ${year + 1}.`);
+        return interaction.editReply(`No scores found for ${format} from June ${year-1} to May ${year}.`);
       }
       
       const embed = new EmbedBuilder()
-        .setTitle(`🏆 Top 10 ${format} Players: ${year}-${year + 1} Season`)
+        .setTitle(`🏆 Top 10 ${format} Players: ${year-1}-${year} Season`)
         .setColor(0x00AE86)
         .setDescription(
           players
-            .map((p, i) => `${i + 1}. **${p.username}** – ${p.score} pts`)
+            .map((p, i) => `${i + 1}. **${p.username}** – ${p.score} pts (${p.eventCount || 1} events)`)
             .join('\n')
         )
-        .setFooter({ text: `Season period: June ${year} to June ${year + 1}` });
+        .setFooter({ text: `Season period: June ${year-1} to May ${year}` });
       
       interaction.editReply({ embeds: [embed] });
     });
@@ -438,14 +389,6 @@ client.on('interactionCreate', async interaction => {
 
   // Command to export scores as CSV
   if (commandName === 'exportscores') {
-    // Admin check
-    if (!hasAdminRole(interaction)) {
-      return interaction.reply({ 
-        content: 'You need the **bot-admin** role to export score data.', 
-        ephemeral: true 
-      });
-    }
-    
     const format = interaction.options.getString('format');
     const yearStr = interaction.options.getString('year');
     
@@ -455,35 +398,50 @@ client.on('interactionCreate', async interaction => {
       return interaction.reply('Please provide a valid year in YYYY format.');
     }
     
-    // Calculate start and end months for the league year (June to June)
-    const startMonth = `${year}-06`; // June of the selected year
-    const endMonth = `${year + 1}-06`; // June of the next year
+    // Calculate start and end months for the league year (June of previous year to May of current year)
+    const startMonth = `${year-1}-06`; // June of the previous year
+    const endMonth = `${year}-05`;     // May of the current year
     
     // Acknowledge the request
     await interaction.deferReply();
     
     db.getAllFormatScores(format, startMonth, endMonth, async (scores) => {
       if (!scores.length) {
-        return interaction.editReply(`No scores found for ${format} from June ${year} to June ${year + 1}.`);
+        return interaction.editReply(`No scores found for ${format} from June ${year-1} to May ${year}.`);
       }
       
       try {
-        // Create CSV content
-        let csvContent = 'Username,Month,Score,EventID,Format\n';
+        // Group by username to count number of events per player
+        const playerEvents = {};
         
         scores.forEach(score => {
-          csvContent += `"${score.username}","${score.month}",${score.score},"${score.eventId || ''}","${score.format || ''}"\n`;
+          if (!playerEvents[score.username]) {
+            playerEvents[score.username] = new Set();
+          }
+          // Only count unique events
+          if (score.eventId) {
+            playerEvents[score.username].add(score.eventId);
+          }
+        });
+        
+        // Create CSV content
+        let csvContent = 'Username,Month,Score,EventID,Format,EventCount\n';
+        
+        scores.forEach(score => {
+          const eventCount = playerEvents[score.username]?.size || 1;
+          csvContent += `"${score.username}","${score.month}",${score.score},"${score.eventId || ''}","${score.format || ''}",${eventCount}\n`;
         });
         
         // Create a temporary file
-        const fileName = `${format.replace(/ /g, '_')}_scores_${year}-${year+1}.csv`;
+        const seasonName = `${year-1}-${year}`;
+        const fileName = `${format.replace(/ /g, '_')}_scores_${seasonName}.csv`;
         const filePath = path.join(process.cwd(), fileName);
         
         await fs.writeFile(filePath, csvContent);
         
         // Send the file as attachment
         await interaction.editReply({
-          content: `Here are the ${format} scores for the ${year}-${year+1} season:`,
+          content: `Here are the ${format} scores for the ${year-1}-${year} season:`,
           files: [{
             attachment: filePath,
             name: fileName
@@ -554,43 +512,9 @@ client.on('interactionCreate', async interaction => {
     });
   }
 
-  // Command to delete an event by ID
-  if (commandName === 'deleteevent') {
-    const eventId = interaction.options.getString('eventid');
-    const confirm = interaction.options.getBoolean('confirm');
-    
-    // Admin check
-    if (!hasAdminRole(interaction)) {
-      logger.warn(`Permission denied for user ${interaction.user.tag}: missing bot-admin role`);
-      return interaction.reply({ 
-        content: 'You need the **bot-admin** role to delete events.', 
-        ephemeral: true 
-      });
-    }
-    
-    if (confirm) {
-      db.deleteEvent(eventId, (result) => {
-        if (result.acknowledged) {
-          return interaction.reply(`Event with ID \`${eventId}\` has been deleted.`);
-        } else {
-          return interaction.reply(`Failed to delete event with ID \`${eventId}\`.`);
-        }
-      });
-    } else {
-      return interaction.reply('Deletion not confirmed. Use the confirm option to delete the event.');
-    }
-  }
 
   // Command to delete an event
   if (commandName === 'deleteevent') {
-    // Admin check - only admins can delete events
-    if (!hasAdminRole(interaction)) {
-      logger.warn(`Permission denied for user ${interaction.user.tag}: missing bot-admin role`);
-      return interaction.reply({ 
-        content: 'You need the **bot-admin** role to delete tournament results.', 
-        ephemeral: true 
-      });
-    }
     
     const eventId = interaction.options.getString('eventid');
     const confirmDelete = interaction.options.getBoolean('confirm');
@@ -656,3 +580,4 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(process.env.DISCORD_TOKEN);
+
